@@ -159,14 +159,14 @@ struct structural_parser : structural_iterator {
     return false;
   }
 
-  WARN_UNUSED really_inline bool parse_number(const uint8_t *src, bool found_minus) {
+  WARN_UNUSED really_inline bool parse_number(const uint8_t *src) {
     log_value("number");
-    bool succeeded = numberparsing::parse_number(src, found_minus, tape);
+    bool succeeded = numberparsing::parse_number(src, tape);
     if (!succeeded) { log_error("Invalid number"); }
     return !succeeded;
   }
-  WARN_UNUSED really_inline bool parse_number(bool found_minus) {
-    return parse_number(current(), found_minus);
+  WARN_UNUSED really_inline bool parse_number() {
+    return parse_number(current());
   }
 
   WARN_UNUSED really_inline ret_address_t parse_value(const unified_machine_addresses &addresses, ret_address_t continue_state) {
@@ -189,12 +189,10 @@ struct structural_parser : structural_iterator {
       FAIL_IF( !atomparsing::is_valid_null_atom(current()) );
       tape.append(0, internal::tape_type::NULL_VALUE);
       return continue_state;
+    case '-':
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      FAIL_IF( parse_number(false) );
-      return continue_state;
-    case '-':
-      FAIL_IF( parse_number(true) );
+      FAIL_IF( parse_number() );
       return continue_state;
     case '{':
       FAIL_IF( start_object(continue_state) );
@@ -349,18 +347,12 @@ WARN_UNUSED static error_code parse_structurals(dom_parser_implementation &dom_p
     FAIL_IF( !atomparsing::is_valid_null_atom(parser.current(), parser.remaining_len()) );
     parser.tape.append(0, internal::tape_type::NULL_VALUE);
     goto finish;
+  case '-':
   case '0': case '1': case '2': case '3': case '4':
   case '5': case '6': case '7': case '8': case '9':
     FAIL_IF(
       parser.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
-        return parser.parse_number(&copy[idx], false);
-      })
-    );
-    goto finish;
-  case '-':
-    FAIL_IF(
-      parser.with_space_terminated_copy([&](const uint8_t *copy, size_t idx) {
-        return parser.parse_number(&copy[idx], true);
+        return parser.parse_number(&copy[idx]);
       })
     );
     goto finish;
